@@ -3,21 +3,25 @@
 <head>
   <meta charset="UTF-8" />
   <title>Chat Kindle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
+    * { box-sizing: border-box; }
     body {
       font-family: sans-serif;
       margin: 0;
-      background: #ece5dd;
+      padding: 0;
+      height: 100vh;
       display: flex;
       flex-direction: column;
-      height: 100vh;
+      background: #ece5dd;
     }
     header {
       background: #075e54;
       color: white;
       padding: 10px;
       text-align: center;
-      font-size: 20px;
+      font-size: 18px;
+      flex-shrink: 0;
     }
     #chat {
       flex: 1;
@@ -29,43 +33,37 @@
     .msg {
       background: #dcf8c6;
       border-radius: 5px;
-      padding: 10px;
-      margin: 5px 0;
-      max-width: 80%;
+      padding: 8px;
+      margin: 4px 0;
+      font-size: 16px;
       align-self: flex-start;
+      max-width: 90%;
     }
-    .msg .text {
-      font-size: 20px;
-    }
-    .msg .meta {
-      font-size: 12px;
+    .meta {
+      font-size: 11px;
       color: #666;
       text-align: right;
-      margin-top: 4px;
+      margin-top: 3px;
     }
     form {
       display: flex;
-      padding: 10px;
+      gap: 5px;
+      padding: 8px;
       background: #fff;
+      flex-shrink: 0;
     }
     input[type="text"] {
       flex: 1;
-      padding: 10px;
-      font-size: 16px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
+      padding: 8px;
+      font-size: 14px;
     }
     button {
       background: #25d366;
       color: white;
       border: none;
-      padding: 10px 15px;
-      margin-left: 5px;
+      padding: 8px 12px;
+      font-size: 14px;
       border-radius: 4px;
-      font-size: 16px;
-    }
-    button:hover {
-      background: #128c7e;
     }
   </style>
 </head>
@@ -76,7 +74,7 @@
   <div id="chat"></div>
 
   <form onsubmit="sendMessage(); return false;">
-    <input id="text" placeholder="Escribe algo..." autocomplete="off" required />
+    <input id="text" placeholder="Mensaje..." autocomplete="off" required />
     <button type="submit">Enviar</button>
   </form>
 
@@ -90,7 +88,7 @@
 
     let username = localStorage.getItem("chat-username");
     if (!username) {
-      username = prompt("¿Cómo te llamás?");
+      username = prompt("¿Tu nombre?");
       if (username) {
         localStorage.setItem("chat-username", username);
       } else {
@@ -131,13 +129,10 @@
 
           chat.innerHTML = "";
           messages.forEach(msg => {
+            const date = new Date(msg.timestamp).toLocaleTimeString();
             const div = document.createElement("div");
             div.className = "msg";
-            const date = new Date(msg.timestamp).toLocaleString();
-            div.innerHTML = `
-              <div class="text"><strong>${msg.user}:</strong> ${msg.text}</div>
-              <div class="meta">${date}</div>
-            `;
+            div.innerHTML = `<div><strong>${msg.user}:</strong> ${msg.text}</div><div class="meta">${date}</div>`;
             chat.appendChild(div);
           });
         });
@@ -146,5 +141,6 @@
     setInterval(loadMessages, 3000);
     loadMessages();
   </script>
+
 </body>
 </html>
