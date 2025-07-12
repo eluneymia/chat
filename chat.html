@@ -3,144 +3,119 @@
 <head>
   <meta charset="UTF-8" />
   <title>Chat Kindle</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    * { box-sizing: border-box; }
     body {
       font-family: sans-serif;
       margin: 0;
-      padding: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      background: #ece5dd;
+      padding: 20px;
     }
-    header {
-      background: #075e54;
-      color: white;
-      padding: 10px;
-      text-align: center;
-      font-size: 18px;
-      flex-shrink: 0;
+    h2 {
+      margin-top: 0;
     }
-    #chat {
-      flex: 1;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column-reverse;
-      padding: 10px;
+    input, button {
+      font-size: 16px;
+      padding: 5px;
     }
     .msg {
-      background: #dcf8c6;
-      border-radius: 5px;
-      padding: 8px;
-      margin: 4px 0;
-      font-size: 16px;
-      align-self: flex-start;
-      max-width: 90%;
+      border-bottom: 1px solid #ddd;
+      margin: 10px 0;
     }
-    .meta {
-      font-size: 11px;
-      color: #666;
-      text-align: right;
-      margin-top: 3px;
+    .msg .text {
+      font-size: 18px;
     }
-    form {
-      display: flex;
-      gap: 5px;
-      padding: 8px;
-      background: #fff;
-      flex-shrink: 0;
-    }
-    input[type="text"] {
-      flex: 1;
-      padding: 8px;
-      font-size: 14px;
-    }
-    button {
-      background: #25d366;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      font-size: 14px;
-      border-radius: 4px;
+    .msg .meta {
+      font-size: 12px;
+      color: #888;
     }
   </style>
 </head>
 <body>
 
-  <header>Chat Kindle</header>
+  <h2>Chat Kindle</h2>
+
+  <input id="username" placeholder="Tu nombre" />
+  <input id="text" placeholder="Escribe algo..." />
+  <button onclick="sendMessage()">Enviar</button>
 
   <div id="chat"></div>
 
-  <form onsubmit="sendMessage(); return false;">
-    <input id="text" placeholder="Mensaje..." autocomplete="off" required />
-    <button type="submit">Enviar</button>
-  </form>
-
-  <audio id="sendSound" src="https://cdn.jsdelivr.net/gh/terkelg/sounds@master/interface/click.wav"></audio>
-  <audio id="receiveSound" src="https://cdn.jsdelivr.net/gh/terkelg/sounds@master/interface/confirm.wav"></audio>
-
   <script>
     const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
-    const sendSound = document.getElementById("sendSound");
-    const receiveSound = document.getElementById("receiveSound");
 
-    let username = localStorage.getItem("chat-username");
-    if (!username) {
-      username = prompt("¿Tu nombre?");
-      if (username) {
-        localStorage.setItem("chat-username", username);
-      } else {
-        username = "Anónimo";
+    // Pide permiso de notificaciones al entrar
+    document.addEventListener("DOMContentLoaded", () => {
+      askNotificationPermission();
+      document.getElementById("text").focus();
+    });
+
+    function askNotificationPermission() {
+      if ("Notification" in window) {
+        Notification.requestPermission().then((permission) => {
+          console.log("Permiso notificaciones:", permission);
+        });
       }
     }
 
-    const chat = document.getElementById("chat");
-    let lastMessageCount = 0;
-
     function sendMessage() {
-      const textInput = document.getElementById("text");
-      const text = textInput.value.trim();
-      if (!text) return;
-
+      const user = document.getElementById("username").value.trim();
+      const text = document.getElementById("text").value.trim();
       const timestamp = Date.now();
-      const msg = { user: username, text, timestamp };
 
+      if (!user || !text) {
+        alert("Escribí tu nombre y mensaje");
+        return;
+      }
+
+      // Guarda en Firebase
       fetch(firebaseUrl, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(msg),
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user, text, timestamp }),
       }).then(() => {
-        sendSound.play();
-        textInput.value = "";
+        document.getElementById("text").value = "";
+        document.getElementById("text").focus();
         loadMessages();
       });
+
+      // Envia notificación local
+      showNotification(user, text);
+    }
+
+    function showNotification(user, text) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(`${user} dice:`, {
+          body: text,
+        });
+      }
     }
 
     function loadMessages() {
       fetch(firebaseUrl)
         .then((res) => res.json())
         .then((data) => {
-          if (!data) return;
-          const messages = Object.values(data).sort((a, b) => b.timestamp - a.timestamp);
-          if (messages.length > lastMessageCount) receiveSound.play();
-          lastMessageCount = messages.length;
-
+          const chat = document.getElementById("chat");
           chat.innerHTML = "";
-          messages.forEach(msg => {
-            const date = new Date(msg.timestamp).toLocaleTimeString();
-            const div = document.createElement("div");
-            div.className = "msg";
-            div.innerHTML = `<div><strong>${msg.user}:</strong> ${msg.text}</div><div class="meta">${date}</div>`;
-            chat.appendChild(div);
-          });
+
+          const messages = Object.values(data || {}).sort(
+            (a, b) => b.timestamp - a.timestamp
+          );
+
+          for (const msg of messages) {
+            const date = new Date(msg.timestamp).toLocaleString();
+            chat.innerHTML += `
+              <div class="msg">
+                <div class="text"><strong>${msg.user}:</strong> ${msg.text}</div>
+                <div class="meta">${date}</div>
+              </div>
+            `;
+          }
         });
     }
 
     setInterval(loadMessages, 3000);
     loadMessages();
   </script>
-
 </body>
 </html>
