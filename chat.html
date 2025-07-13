@@ -2,56 +2,67 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Chat Kindle</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chat Simple</title>
   <style>
     body {
-      font-family: sans-serif;
       margin: 0;
-      padding: 20px;
-      background: #f9f9f9;
-    }
-    h2 {
-      margin-top: 0;
-    }
-    input, button {
-      font-size: 16px;
-      padding: 8px;
-      margin: 4px 0;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    #chat {
-      margin-top: 20px;
-    }
-    .msg {
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px;
-      margin: 10px 0;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    .msg .text {
-      font-size: 18px;
-      margin-bottom: 5px;
-    }
-    .msg .meta {
-      font-size: 12px;
-      color: #888;
+      font-family: sans-serif;
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
     }
 
-    /* Botón flotante */
-    #btn-tene {
+    #chat {
+      flex: 1;
+      padding: 10px;
+      overflow-y: auto;
+      background: #f5f5f5;
+    }
+
+    .message {
+      margin: 5px 0;
+      padding: 10px;
+      background: #e0e0e0;
+      border-radius: 8px;
+      max-width: 80%;
+    }
+
+    .me {
+      background: #d1f3d1;
+      align-self: flex-end;
+      text-align: right;
+    }
+
+    #inputArea {
+      display: flex;
+      padding: 10px;
+      background: #fff;
+      border-top: 1px solid #ccc;
+    }
+
+    #inputArea input {
+      flex: 1;
+      padding: 10px;
+      font-size: 16px;
+    }
+
+    #inputArea button {
+      padding: 10px 15px;
+      font-size: 16px;
+      margin-left: 5px;
+    }
+
+    #btnTeNecesito {
       position: fixed;
-      bottom: 20px;
-      right: 20px;
-      background: #ff4081;
-      color: #fff;
+      top: 10px;
+      right: 10px;
+      background-color: #ff4081;
+      color: white;
       border: none;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
+      padding: 10px 14px;
+      border-radius: 50px;
+      font-weight: bold;
       cursor: pointer;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
@@ -59,115 +70,56 @@
 </head>
 <body>
 
-  <h2>Chat Kindle</h2>
+<button id="btnTeNecesito">Te necesito</button>
 
-  <input id="username" placeholder="Tu nombre" />
-  <input id="text" placeholder="Escribe algo..." />
+<div id="chat"></div>
+
+<div id="inputArea">
+  <input id="messageInput" type="text" placeholder="Escribe un mensaje..." />
   <button onclick="sendMessage()">Enviar</button>
+</div>
 
-  <div id="chat"></div>
+<script>
+  let username = localStorage.getItem("username");
 
-  <!-- Botón flotante -->
-  <button id="btn-tene" title="Te necesito">💬</button>
-
-  <script>
-    const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
-
-    document.addEventListener("DOMContentLoaded", () => {
-      askNotificationPermission();
-      document.getElementById("text").focus();
-
-      // Evento botón flotante
-      document.getElementById("btn-tene").addEventListener("click", () => {
-        sendTeNecesito();
-      });
-    });
-
-    function askNotificationPermission() {
-      if ("Notification" in window) {
-        Notification.requestPermission().then((permission) => {
-          console.log("Permiso notificaciones:", permission);
-        });
-      }
+  // Solicitar el nombre solo si no está guardado
+  if (!username) {
+    username = prompt("¿Cuál es tu nombre?");
+    if (username) {
+      localStorage.setItem("username", username);
+    } else {
+      username = "Invitado";
     }
+  }
 
-    function sendMessage() {
-      const user = document.getElementById("username").value.trim();
-      const text = document.getElementById("text").value.trim();
-      const timestamp = Date.now();
+  const chat = document.getElementById("chat");
+  const input = document.getElementById("messageInput");
 
-      if (!user || !text) {
-        alert("Escribí tu nombre y mensaje");
-        return;
-      }
+  function sendMessage() {
+    const text = input.value.trim();
+    if (text === "") return;
 
-      fetch(firebaseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user, text, timestamp }),
-      }).then(() => {
-        document.getElementById("text").value = "";
-        document.getElementById("text").focus();
-        loadMessages();
-      });
+    const div = document.createElement("div");
+    div.classList.add("message", "me");
+    div.textContent = username + ": " + text;
+    chat.appendChild(div);
 
-      showNotification(user, text);
+    input.value = "";
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // Acción para botón "Te necesito"
+  document.getElementById("btnTeNecesito").onclick = () => {
+    alert("¡Estamos contigo, " + username + "!");
+  };
+
+  // Enviar con Enter
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      sendMessage();
     }
+  });
+</script>
 
-    function sendTeNecesito() {
-      const user = document.getElementById("username").value.trim() || "Anónimo";
-      const text = "¡Te necesito!";
-      const timestamp = Date.now();
-
-      fetch(firebaseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user, text, timestamp }),
-      }).then(() => {
-        document.getElementById("text").focus();
-        loadMessages();
-      });
-
-      showNotification(user, text);
-    }
-
-    function showNotification(user, text) {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`${user} dice:`, {
-          body: text,
-        });
-      }
-    }
-
-    function loadMessages() {
-      fetch(firebaseUrl)
-        .then((res) => res.json())
-        .then((data) => {
-          const chat = document.getElementById("chat");
-          chat.innerHTML = "";
-
-          const messages = Object.values(data || {}).sort(
-            (a, b) => b.timestamp - a.timestamp
-          );
-
-          for (const msg of messages) {
-            const date = new Date(msg.timestamp).toLocaleString();
-            chat.innerHTML += `
-              <div class="msg">
-                <div class="text"><strong>${msg.user}:</strong> ${msg.text}</div>
-                <div class="meta">${date}</div>
-              </div>
-            `;
-          }
-        });
-    }
-
-    setInterval(loadMessages, 3000);
-    loadMessages();
-  </script>
 </body>
 </html>
