@@ -3,29 +3,57 @@
 <head>
   <meta charset="UTF-8" />
   <title>Chat Kindle</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       font-family: sans-serif;
       margin: 0;
       padding: 20px;
+      background: #f9f9f9;
     }
     h2 {
       margin-top: 0;
     }
     input, button {
       font-size: 16px;
-      padding: 5px;
+      padding: 8px;
+      margin: 4px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #chat {
+      margin-top: 20px;
     }
     .msg {
-      border-bottom: 1px solid #ddd;
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
       margin: 10px 0;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
     .msg .text {
       font-size: 18px;
+      margin-bottom: 5px;
     }
     .msg .meta {
       font-size: 12px;
       color: #888;
+    }
+
+    /* Botón flotante */
+    #btn-tene {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: #ff4081;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
   </style>
 </head>
@@ -39,13 +67,20 @@
 
   <div id="chat"></div>
 
+  <!-- Botón flotante -->
+  <button id="btn-tene" title="Te necesito">💬</button>
+
   <script>
     const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
 
-    // Pide permiso de notificaciones al entrar
     document.addEventListener("DOMContentLoaded", () => {
       askNotificationPermission();
       document.getElementById("text").focus();
+
+      // Evento botón flotante
+      document.getElementById("btn-tene").addEventListener("click", () => {
+        sendTeNecesito();
+      });
     });
 
     function askNotificationPermission() {
@@ -66,7 +101,6 @@
         return;
       }
 
-      // Guarda en Firebase
       fetch(firebaseUrl, {
         method: "POST",
         headers: {
@@ -79,7 +113,25 @@
         loadMessages();
       });
 
-      // Envia notificación local
+      showNotification(user, text);
+    }
+
+    function sendTeNecesito() {
+      const user = document.getElementById("username").value.trim() || "Anónimo";
+      const text = "¡Te necesito!";
+      const timestamp = Date.now();
+
+      fetch(firebaseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user, text, timestamp }),
+      }).then(() => {
+        document.getElementById("text").focus();
+        loadMessages();
+      });
+
       showNotification(user, text);
     }
 
