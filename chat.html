@@ -100,9 +100,13 @@
 
   <div id="toast-container"></div>
 
+  <!-- Audio para beep -->
+  <audio id="beep" src="beep.wav" preload="auto"></audio>
+
   <script>
     const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
     let lastTimestampShown = 0;
+    let lastOwnTimestamp = 0;
 
     window.onload = () => {
       askNotificationPermission();
@@ -163,8 +167,10 @@
         loadMessages();
       });
 
-      showToast(`${user} dice: ${text}`);
-      showNotification(user, text);
+      // ✅ Guardamos el timestamp de nuestro mensaje para no duplicar toast
+      lastOwnTimestamp = timestamp;
+
+      // No mostramos toast ni sonido aquí → se mostrará en loadMessages()
     }
 
     function sendTeNecesito() {
@@ -186,8 +192,8 @@
         loadMessages();
       });
 
-      showToast(`${user} dice: ${text}`);
-      showNotification(user, text);
+      lastOwnTimestamp = timestamp;
+      // No mostramos toast aquí → se mostrará en loadMessages()
     }
 
     function showNotification(user, text) {
@@ -219,7 +225,12 @@
             `;
 
             if (msg.timestamp > lastTimestampShown) {
-              showToast(`${msg.user} dice: ${msg.text}`);
+              // Evitar mostrar toast para nuestro propio mensaje duplicado
+              if (msg.timestamp !== lastOwnTimestamp) {
+                showToast(`${msg.user} dice: ${msg.text}`);
+                playSound();
+                showNotification(msg.user, msg.text);
+              }
               lastTimestampShown = msg.timestamp;
             }
           }
@@ -243,6 +254,16 @@
           toast.remove();
         }, 500);
       }, 3000);
+    }
+
+    function playSound() {
+      const beep = document.getElementById("beep");
+      if (beep) {
+        beep.currentTime = 0;
+        beep.play().catch(() => {
+          // Ignorar errores si el navegador bloquea autoplay
+        });
+      }
     }
   </script>
 
