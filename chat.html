@@ -108,6 +108,7 @@
     let lastTimestampShown = 0;
     let lastOwnTimestamp = 0;
     let isFirstLoad = true;
+    let displayedTimestamps = new Set();
 
     window.onload = () => {
       askNotificationPermission();
@@ -213,33 +214,46 @@
       fetch(firebaseUrl)
         .then((res) => res.json())
         .then((data) => {
-          const chat = document.getElementById("chat");
-          chat.innerHTML = "";
+          if (!data) return;
 
+          const chat = document.getElementById("chat");
           const messages = Object.values(data || {}).sort(
             (a, b) => b.timestamp - a.timestamp
           );
 
           let newestTimestamp = lastTimestampShown;
+          const fragment = document.createDocumentFragment();
 
           for (const msg of messages) {
-            const date = new Date(msg.timestamp).toLocaleString();
-            chat.innerHTML += `
-              <div class="msg">
+            if (!displayedTimestamps.has(msg.timestamp)) {
+              const date = new Date(msg.timestamp).toLocaleString();
+
+              const msgDiv = document.createElement("div");
+              msgDiv.className = "msg";
+              msgDiv.innerHTML = `
                 <div class="text"><strong>${msg.user}:</strong> ${msg.text}</div>
                 <div class="meta">${date}</div>
-              </div>
-            `;
+              `;
 
-            if (msg.timestamp > lastTimestampShown) {
-              newestTimestamp = Math.max(newestTimestamp, msg.timestamp);
+              fragment.appendChild(msgDiv);
 
               if (!isFirstLoad && msg.timestamp !== lastOwnTimestamp) {
                 showToast(`${msg.user} dice: ${msg.text}`);
                 playSound();
                 showNotification(msg.user, msg.text);
               }
+
+              displayedTimestamps.add(msg.timestamp);
+
+              if (msg.timestamp > newestTimestamp) {
+                newestTimestamp = msg.timestamp;
+              }
             }
+          }
+
+          // Insertar nuevos mensajes al principio del chat
+          if (fragment.childNodes.length > 0) {
+            chat.prepend(fragment);
           }
 
           if (newestTimestamp > lastTimestampShown) {
