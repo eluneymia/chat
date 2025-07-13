@@ -107,6 +107,7 @@
     const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
     let lastTimestampShown = 0;
     let lastOwnTimestamp = 0;
+    let isFirstLoad = true;
 
     window.onload = () => {
       askNotificationPermission();
@@ -216,8 +217,10 @@
           chat.innerHTML = "";
 
           const messages = Object.values(data || {}).sort(
-            (a, b) => a.timestamp - b.timestamp
+            (a, b) => b.timestamp - a.timestamp
           );
+
+          let newestTimestamp = lastTimestampShown;
 
           for (const msg of messages) {
             const date = new Date(msg.timestamp).toLocaleString();
@@ -229,14 +232,21 @@
             `;
 
             if (msg.timestamp > lastTimestampShown) {
-              if (msg.timestamp !== lastOwnTimestamp) {
+              newestTimestamp = Math.max(newestTimestamp, msg.timestamp);
+
+              if (!isFirstLoad && msg.timestamp !== lastOwnTimestamp) {
                 showToast(`${msg.user} dice: ${msg.text}`);
                 playSound();
                 showNotification(msg.user, msg.text);
               }
-              lastTimestampShown = msg.timestamp;
             }
           }
+
+          if (newestTimestamp > lastTimestampShown) {
+            lastTimestampShown = newestTimestamp;
+          }
+
+          isFirstLoad = false;
         });
     }
 
