@@ -135,10 +135,17 @@
     };
 
     function askNotificationPermission() {
-      if ("Notification" in window) {
+      if (!("Notification" in window)) {
+        console.log("Este navegador no soporta notificaciones.");
+        return;
+      }
+
+      if (Notification.permission === "default") {
         Notification.requestPermission().then((permission) => {
           console.log("Permiso notificaciones:", permission);
         });
+      } else {
+        console.log("Permiso notificaciones:", Notification.permission);
       }
     }
 
@@ -167,10 +174,7 @@
         loadMessages();
       });
 
-      // ✅ Guardamos el timestamp de nuestro mensaje para no duplicar toast
       lastOwnTimestamp = timestamp;
-
-      // No mostramos toast ni sonido aquí → se mostrará en loadMessages()
     }
 
     function sendTeNecesito() {
@@ -193,13 +197,13 @@
       });
 
       lastOwnTimestamp = timestamp;
-      // No mostramos toast aquí → se mostrará en loadMessages()
     }
 
     function showNotification(user, text) {
       if ("Notification" in window && Notification.permission === "granted") {
         new Notification(`${user} dice:`, {
           body: text,
+          icon: "https://cdn-icons-png.flaticon.com/512/134/134914.png"
         });
       }
     }
@@ -225,7 +229,6 @@
             `;
 
             if (msg.timestamp > lastTimestampShown) {
-              // Evitar mostrar toast para nuestro propio mensaje duplicado
               if (msg.timestamp !== lastOwnTimestamp) {
                 showToast(`${msg.user} dice: ${msg.text}`);
                 playSound();
@@ -261,7 +264,7 @@
       if (beep) {
         beep.currentTime = 0;
         beep.play().catch(() => {
-          // Ignorar errores si el navegador bloquea autoplay
+          // Silenciosamente ignorar error si el navegador bloquea autoplay
         });
       }
     }
