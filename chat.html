@@ -1,238 +1,139 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8" />
-  <title>Chat Kindle</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 0;
-      padding: 20px;
-      background: #f9f9f9;
-      position: relative;
-    }
-    h2 {
-      margin-top: 0;
-    }
-    input, button {
-      font-size: 16px;
-      padding: 8px;
-      margin: 4px 0;
-      width: 100%;
-      box-sizing: border-box;
-    }
-    #chat {
-      margin-top: 20px;
-    }
-    .msg {
-      background: #fff;
-      border-radius: 8px;
-      padding: 10px;
-      margin: 10px 0;
-      box-shadow: 0 0 5px rgba(0,0,0,0.1);
-    }
-    .msg .text {
-      font-size: 18px;
-      margin-bottom: 5px;
-    }
-    .msg .meta {
-      font-size: 12px;
-      color: #888;
-    }
+<script>
+  const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
 
-    /* Botón flotante arriba derecha */
-    #btn-tene {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      background: #ff4081;
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      font-size: 24px;
-      cursor: pointer;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      z-index: 9999;
-    }
+  let lastTimestampShown = 0;
 
-    /* Toast */
-    #toast-container {
-      position: fixed;
-      bottom: 30px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 9999;
-    }
+  document.addEventListener("DOMContentLoaded", () => {
+    askNotificationPermission();
+    document.getElementById("text").focus();
 
-    .toast {
-      background-color: #333;
-      color: #fff;
-      padding: 12px 20px;
-      margin-top: 10px;
-      border-radius: 5px;
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out;
-      font-size: 16px;
-      max-width: 300px;
-      text-align: center;
-    }
-
-    .toast.show {
-      opacity: 1;
-    }
-  </style>
-</head>
-<body>
-
-  <h2>Chat Kindle</h2>
-
-  <input id="username" placeholder="Tu nombre" />
-  <input id="text" placeholder="Escribe algo..." />
-  <button onclick="sendMessage()">Enviar</button>
-
-  <div id="chat"></div>
-
-  <!-- Botón flotante arriba derecha -->
-  <button id="btn-tene" title="Te necesito">💬</button>
-
-  <!-- Contenedor de toasts -->
-  <div id="toast-container"></div>
-
-  <script>
-    const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
-
-    document.addEventListener("DOMContentLoaded", () => {
-      askNotificationPermission();
-      document.getElementById("text").focus();
-
-      // Botón "Te necesito"
-      document.getElementById("btn-tene").addEventListener("click", () => {
-        sendTeNecesito();
-      });
-
-      // Cargar usuario de localStorage si existe
-      const savedUser = localStorage.getItem("username");
-      if (savedUser) {
-        document.getElementById("username").value = savedUser;
-      }
+    // Botón "Te necesito"
+    document.getElementById("btn-tene").addEventListener("click", () => {
+      sendTeNecesito();
     });
 
-    function askNotificationPermission() {
-      if ("Notification" in window) {
-        Notification.requestPermission().then((permission) => {
-          console.log("Permiso notificaciones:", permission);
-        });
-      }
+    // Cargar usuario guardado
+    const savedUser = localStorage.getItem("username");
+    if (savedUser) {
+      document.getElementById("username").value = savedUser;
     }
+  });
 
-    function sendMessage() {
-      const user = document.getElementById("username").value.trim();
-      const text = document.getElementById("text").value.trim();
-      const timestamp = Date.now();
-
-      if (!user || !text) {
-        alert("Escribí tu nombre y mensaje");
-        return;
-      }
-
-      // Guardar user en localStorage
-      localStorage.setItem("username", user);
-
-      fetch(firebaseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user, text, timestamp }),
-      }).then(() => {
-        document.getElementById("text").value = "";
-        document.getElementById("text").focus();
-        loadMessages();
+  function askNotificationPermission() {
+    if ("Notification" in window) {
+      Notification.requestPermission().then((permission) => {
+        console.log("Permiso notificaciones:", permission);
       });
+    }
+  }
 
-      showToast(`${user} dice: ${text}`);
-      showNotification(user, text);
+  function sendMessage() {
+    const user = document.getElementById("username").value.trim();
+    const text = document.getElementById("text").value.trim();
+    const timestamp = Date.now();
+
+    if (!user || !text) {
+      alert("Escribí tu nombre y mensaje");
+      return;
     }
 
-    function sendTeNecesito() {
-      const user = document.getElementById("username").value.trim() || "Anónimo";
-      const text = "¡Te necesito!";
-      const timestamp = Date.now();
+    localStorage.setItem("username", user);
 
-      localStorage.setItem("username", user);
+    fetch(firebaseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user, text, timestamp }),
+    }).then(() => {
+      document.getElementById("text").value = "";
+      document.getElementById("text").focus();
+      loadMessages();
+    });
 
-      fetch(firebaseUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ user, text, timestamp }),
-      }).then(() => {
-        document.getElementById("text").focus();
-        loadMessages();
+    showToast(`${user} dice: ${text}`);
+    showNotification(user, text);
+  }
+
+  function sendTeNecesito() {
+    const user = document.getElementById("username").value.trim() || "Anónimo";
+    const text = "¡Te necesito!";
+    const timestamp = Date.now();
+
+    localStorage.setItem("username", user);
+
+    fetch(firebaseUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user, text, timestamp }),
+    }).then(() => {
+      document.getElementById("text").focus();
+      loadMessages();
+    });
+
+    showToast(`${user} dice: ${text}`);
+    showNotification(user, text);
+  }
+
+  function showNotification(user, text) {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(`${user} dice:`, {
+        body: text,
       });
-
-      showToast(`${user} dice: ${text}`);
-      showNotification(user, text);
     }
+  }
 
-    function showNotification(user, text) {
-      if ("Notification" in window && Notification.permission === "granted") {
-        new Notification(`${user} dice:`, {
-          body: text,
-        });
-      }
-    }
+  function loadMessages() {
+    fetch(firebaseUrl)
+      .then((res) => res.json())
+      .then((data) => {
+        const chat = document.getElementById("chat");
+        chat.innerHTML = "";
 
-    function loadMessages() {
-      fetch(firebaseUrl)
-        .then((res) => res.json())
-        .then((data) => {
-          const chat = document.getElementById("chat");
-          chat.innerHTML = "";
+        const messages = Object.values(data || {}).sort(
+          (a, b) => a.timestamp - b.timestamp
+        );
 
-          const messages = Object.values(data || {}).sort(
-            (a, b) => b.timestamp - a.timestamp
-          );
+        for (const msg of messages) {
+          const date = new Date(msg.timestamp).toLocaleString();
+          chat.innerHTML += `
+            <div class="msg">
+              <div class="text"><strong>${msg.user}:</strong> ${msg.text}</div>
+              <div class="meta">${date}</div>
+            </div>
+          `;
 
-          for (const msg of messages) {
-            const date = new Date(msg.timestamp).toLocaleString();
-            chat.innerHTML += `
-              <div class="msg">
-                <div class="text"><strong>${msg.user}:</strong> ${msg.text}</div>
-                <div class="meta">${date}</div>
-              </div>
-            `;
+          // ✅ Mostrar toast sólo si es un mensaje nuevo
+          if (msg.timestamp > lastTimestampShown) {
             showToast(`${msg.user} dice: ${msg.text}`);
+            lastTimestampShown = msg.timestamp;
           }
-        });
-    }
+        }
+      });
+  }
 
-    function showToast(message) {
-      const container = document.getElementById("toast-container");
-      const toast = document.createElement("div");
-      toast.className = "toast";
-      toast.textContent = message;
+  function showToast(message) {
+    const container = document.getElementById("toast-container");
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
 
-      container.appendChild(toast);
+    container.appendChild(toast);
 
-      // Forzar reflow para activar la transición
-      window.getComputedStyle(toast).opacity;
-      toast.classList.add("show");
+    // Forzar reflow para activar transición
+    window.getComputedStyle(toast).opacity;
+    toast.classList.add("show");
 
+    setTimeout(() => {
+      toast.classList.remove("show");
       setTimeout(() => {
-        toast.classList.remove("show");
-        setTimeout(() => {
-          toast.remove();
-        }, 500);
-      }, 3000);
-    }
+        toast.remove();
+      }, 500);
+    }, 3000);
+  }
 
-    setInterval(loadMessages, 3000);
-    loadMessages();
-  </script>
-</body>
-</html>
+  setInterval(loadMessages, 3000);
+  loadMessages();
+</script>
