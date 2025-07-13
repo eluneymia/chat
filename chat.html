@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8" />
-  <title>Chat Kindle</title>
+  <title>Chat</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -12,9 +12,7 @@
       background: #f9f9f9;
       position: relative;
     }
-    h2 {
-      margin-top: 0;
-    }
+
     input, button {
       font-size: 16px;
       padding: 8px;
@@ -22,9 +20,11 @@
       width: 100%;
       box-sizing: border-box;
     }
+
     #chat {
       margin-top: 20px;
     }
+
     .msg {
       background: #fff;
       border-radius: 8px;
@@ -32,14 +32,17 @@
       margin: 10px 0;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
+
     .msg .text {
       font-size: 18px;
       margin-bottom: 5px;
     }
+
     .msg .meta {
       font-size: 12px;
       color: #888;
     }
+
     #btn-tene {
       position: fixed;
       top: 10px;
@@ -55,6 +58,7 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       z-index: 9999;
     }
+
     #toast-container {
       position: fixed;
       top: 30px;
@@ -62,6 +66,7 @@
       transform: translateX(-50%);
       z-index: 9999;
     }
+
     .toast {
       background-color: #333;
       color: #fff;
@@ -74,6 +79,7 @@
       max-width: 300px;
       text-align: center;
     }
+
     .toast.show {
       opacity: 1;
     }
@@ -81,13 +87,11 @@
 </head>
 <body>
 
-  <h2>Chat Kindle</h2>
-
   <div id="username-container">
     <input id="username" placeholder="Tu nombre" />
   </div>
 
-  <input id="text" placeholder="Escribe algo..." />
+  <input id="text" placeholder="Escribe algo y presiona Enter..." />
   <button onclick="sendMessage()">Enviar</button>
 
   <div id="chat"></div>
@@ -103,7 +107,8 @@
     window.onload = () => {
       askNotificationPermission();
 
-      document.getElementById("text").focus();
+      const inputText = document.getElementById("text");
+      inputText.focus();
 
       document.getElementById("btn-tene").addEventListener("click", () => {
         sendTeNecesito();
@@ -114,6 +119,12 @@
         document.getElementById("username").value = savedUser;
         document.getElementById("username-container").style.display = "none";
       }
+
+      inputText.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          sendMessage();
+        }
+      });
 
       setInterval(loadMessages, 3000);
       loadMessages();
