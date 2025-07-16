@@ -101,7 +101,7 @@
 
   <script>
     const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
-    const openAIApiKey = "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"; // ← ← ← REEMPLAZA AQUÍ
+
 
     let lastTimestampShown = 0;
     let lastOwnTimestamp = 0;
@@ -156,14 +156,7 @@
       localStorage.setItem("username", user);
 
       // Si empieza con @ia → preguntar a OpenAI
-      if (text.startsWith("@ia")) {
-        const prompt = text.replace("@ia", "").trim();
-        sendToChatGPT(user, prompt);
-        document.getElementById("text").value = "";
-        document.getElementById("text").focus();
-        return;
-      }
-
+    
       postToFirebase(user, text, timestamp);
     }
 
@@ -193,34 +186,7 @@
       lastOwnTimestamp = timestamp;
     }
 
-    function sendToChatGPT(user, prompt) {
-      showToast("Consultando a ChatGPT...");
-
-      fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openAIApiKey}`
-        },
-        body: JSON.stringify({
-          model: "gpt-3.5-turbo",
-          messages: [
-            { role: "system", content: "Eres un asistente en español." },
-            { role: "user", content: prompt }
-          ]
-        })
-      })
-      .then(res => res.json())
-      .then(data => {
-        const answer = data.choices?.[0]?.message?.content || "No hubo respuesta de ChatGPT.";
-        const timestamp = Date.now();
-        postToFirebase("ChatGPT", answer, timestamp);
-      })
-      .catch(err => {
-        console.error(err);
-        showToast("Error consultando a ChatGPT.");
-      });
-    }
+    
 
     function showNotification(user, text) {
       if ("Notification" in window && Notification.permission === "granted") {
