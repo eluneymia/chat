@@ -12,7 +12,6 @@
       background: #f9f9f9;
       position: relative;
     }
-
     input, button {
       font-size: 16px;
       padding: 8px;
@@ -20,11 +19,9 @@
       width: 100%;
       box-sizing: border-box;
     }
-
     #chat {
       margin-top: 20px;
     }
-
     .msg {
       background: #fff;
       border-radius: 8px;
@@ -32,21 +29,18 @@
       margin: 10px 0;
       box-shadow: 0 0 5px rgba(0,0,0,0.1);
     }
-
     .msg .text {
       font-size: 18px;
       margin-bottom: 5px;
       word-break: break-word;
     }
-
     .msg .meta {
       font-size: 12px;
       color: #888;
     }
-
     #btn-tene {
       position: fixed;
-      top: 10px;
+      top: 30px;
       right: 10px;
       background: #ff4081;
       color: #fff;
@@ -59,7 +53,6 @@
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       z-index: 9999;
     }
-
     #toast-container {
       position: fixed;
       top: 30px;
@@ -67,7 +60,6 @@
       transform: translateX(-50%);
       z-index: 9999;
     }
-
     .toast {
       background-color: #333;
       color: #fff;
@@ -80,11 +72,9 @@
       max-width: 300px;
       text-align: center;
     }
-
     .toast.show {
       opacity: 1;
     }
-
     a {
       color: #007bff;
       text-decoration: underline;
@@ -97,7 +87,7 @@
     <input id="username" placeholder="Tu nombre" />
   </div>
 
-  <input id="text" placeholder="Escribe algo y presiona Enter..." />
+  <input id="text" placeholder="Escribe algo y presiona Enter o @ia..." />
   <button onclick="sendMessage()">Enviar</button>
 
   <div id="chat"></div>
@@ -111,6 +101,8 @@
 
   <script>
     const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
+    const openAIApiKey = "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"; // ← ← ← REEMPLAZA AQUÍ
+
     let lastTimestampShown = 0;
     let lastOwnTimestamp = 0;
     let isFirstLoad = true;
@@ -143,17 +135,10 @@
     };
 
     function askNotificationPermission() {
-      if (!("Notification" in window)) {
-        console.log("Este navegador no soporta notificaciones.");
-        return;
-      }
+      if (!("Notification" in window)) return;
 
       if (Notification.permission === "default") {
-        Notification.requestPermission().then((permission) => {
-          console.log("Permiso notificaciones:", permission);
-        });
-      } else {
-        console.log("Permiso notificaciones:", Notification.permission);
+        Notification.requestPermission();
       }
     }
 
@@ -170,6 +155,29 @@
 
       localStorage.setItem("username", user);
 
+      // Si empieza con @ia → preguntar a OpenAI
+      if (text.startsWith("@ia")) {
+        const prompt = text.replace("@ia", "").trim();
+        sendToChatGPT(user, prompt);
+        document.getElementById("text").value = "";
+        document.getElementById("text").focus();
+        return;
+      }
+
+      postToFirebase(user, text, timestamp);
+    }
+
+    function sendTeNecesito() {
+      const userField = document.getElementById("username");
+      const user = userField && userField.value.trim() ? userField.value.trim() : "Anónimo";
+      const text = "¡Te necesito!";
+      const timestamp = Date.now();
+
+      localStorage.setItem("username", user);
+      postToFirebase(user, text, timestamp);
+    }
+
+    function postToFirebase(user, text, timestamp) {
       fetch(firebaseUrl, {
         method: "POST",
         headers: {
@@ -185,26 +193,33 @@
       lastOwnTimestamp = timestamp;
     }
 
-    function sendTeNecesito() {
-      const userField = document.getElementById("username");
-      const user = userField && userField.value.trim() ? userField.value.trim() : "Anónimo";
-      const text = "¡Te necesito!";
-      const timestamp = Date.now();
+    function sendToChatGPT(user, prompt) {
+      showToast("Consultando a ChatGPT...");
 
-      localStorage.setItem("username", user);
-
-      fetch(firebaseUrl, {
+      fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIApiKey}`
         },
-        body: JSON.stringify({ user, text, timestamp }),
-      }).then(() => {
-        document.getElementById("text").focus();
-        loadMessages();
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "Eres un asistente en español." },
+            { role: "user", content: prompt }
+          ]
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const answer = data.choices?.[0]?.message?.content || "No hubo respuesta de ChatGPT.";
+        const timestamp = Date.now();
+        postToFirebase("ChatGPT", answer, timestamp);
+      })
+      .catch(err => {
+        console.error(err);
+        showToast("Error consultando a ChatGPT.");
       });
-
-      lastOwnTimestamp = timestamp;
     }
 
     function showNotification(user, text) {
@@ -292,9 +307,7 @@
       const beep = document.getElementById("beep");
       if (beep) {
         beep.currentTime = 0;
-        beep.play().catch(() => {
-          // Silenciosamente ignorar error si el navegador bloquea autoplay
-        });
+        beep.play().catch(() => {});
       }
     }
 
