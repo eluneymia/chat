@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <title>Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: #f9f9f9;
+      position: relative;
+    }
+    input, button {
+      font-size: 16px;
+      padding: 8px;
+      margin: 4px 0;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #chat {
+      margin-top: 20px;
+    }
+    .msg {
+      background: #fff;
+      border-radius: 8px;
+      padding: 10px;
+      margin: 10px 0;
+      box-shadow: 0 0 5px rgba(0,0,0,0.1);
+    }
+    .msg .text {
+      font-size: 18px;
+      margin-bottom: 5px;
+      word-break: break-word;
+    }
+    .msg .meta {
+      font-size: 12px;
+      color: #888;
+    }
+    #btn-tene {
+      position: fixed;
+      top: 30px;
+      right: 10px;
+      background: #ff4081;
+      color: #fff;
+      border: none;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      font-size: 24px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      z-index: 9999;
+    }
+    #toast-container {
+      position: fixed;
+      top: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+    }
+    .toast {
+      background-color: #333;
+      color: #fff;
+      padding: 12px 20px;
+      margin-top: 10px;
+      border-radius: 5px;
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+      font-size: 16px;
+      max-width: 300px;
+      text-align: center;
+    }
+    .toast.show {
+      opacity: 1;
+    }
+    a {
+      color: #007bff;
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="username-container">
+    <input id="username" placeholder="Tu nombre" />
+  </div>
+
+  <input id="text" placeholder="Escribe algo y presiona Enter o @ia..." />
+  <button onclick="sendMessage()">Enviar</button>
+
+  <div id="chat"></div>
+
+  <button id="btn-tene" title="Te necesito">💬</button>
+
+  <div id="toast-container"></div>
+
+  <!-- Audio para beep -->
+  <audio id="beep" src="beep.wav" preload="auto"></audio>
+
+  <script>
+    const firebaseUrl = "https://campana-55221-default-rtdb.firebaseio.com/messages.json";
+    const openAIApiKey = "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"; // ← ← ← REEMPLAZA AQUÍ
+
+    let lastTimestampShown = 0;
+    let lastOwnTimestamp = 0;
+    let isFirstLoad = true;
+    let displayedTimestamps = new Set();
+
+    window.onload = () => {
+      askNotificationPermission();
+
+      const inputText = document.getElementById("text");
+      inputText.focus();
+
+      document.getElementById("btn-tene").addEventListener("click", () => {
+        sendTeNecesito();
+      });
+
+      const savedUser = localStorage.getItem("username");
+      if (savedUser) {
+        document.getElementById("username").value = savedUser;
+        document.getElementById("username-container").style.display = "none";
+      }
+
+      inputText.addEventListener("keydown", function (e) {
+        if (e.key === "Enter") {
+          sendMessage();
+        }
+      });
+
+      setInterval(loadMessages, 3000);
+      loadMessages();
+    };
+
+    function askNotificationPermission() {
+      if (!("Notification" in window)) return;
+
+      if (Notification.permission === "default") {
+        Notification.requestPermission();
+      }
+    }
+
+    function sendMessage() {
+      const userField = document.getElementById("username");
+      const user = userField ? userField.value.trim() : "";
+      const text = document.getElementById("text").value.trim();
+      const timestamp = Date.now();
+
+      if (!user || !text) {
+        alert("Escribí tu nombre y mensaje");
+        return;
+      }
+
+      localStorage.setItem("username", user);
+
+      // Si empieza con @ia → preguntar a OpenAI
+      if (text.startsWith("@ia")) {
+        const prompt = text.replace("@ia", "").trim();
+        sendToChatGPT(user, prompt);
+        document.getElementById("text").value = "";
+        document.getElementById("text").focus();
+        return;
+      }
+
+      postToFirebase(user, text, timestamp);
+    }
+
+    function sendTeNecesito() {
+      const userField = document.getElementById("username");
+      const user = userField && userField.value.trim() ? userField.value.trim() : "Anónimo";
+      const text = "¡Te necesito!";
+      const timestamp = Date.now();
+
+      localStorage.setItem("username", user);
+      postToFirebase(user, text, timestamp);
+    }
+
+    function postToFirebase(user, text, timestamp) {
+      fetch(firebaseUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ user, text, timestamp }),
+      }).then(() => {
+        document.getElementById("text").value = "";
+        document.getElementById("text").focus();
+        loadMessages();
+      });
+
+      lastOwnTimestamp = timestamp;
+    }
+
+    function sendToChatGPT(user, prompt) {
+      showToast("Consultando a ChatGPT...");
+
+      fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${openAIApiKey}`
+        },
+        body: JSON.stringify({
+          model: "gpt-3.5-turbo",
+          messages: [
+            { role: "system", content: "Eres un asistente en español." },
+            { role: "user", content: prompt }
+          ]
+        })
+      })
+      .then(res => res.json())
+      .then(data => {
+        const answer = data.choices?.[0]?.message?.content || "No hubo respuesta de ChatGPT.";
+        const timestamp = Date.now();
+        postToFirebase("ChatGPT", answer, timestamp);
+      })
+      .catch(err => {
+        console.error(err);
+        showToast("Error consultando a ChatGPT.");
+      });
+    }
+
+    function showNotification(user, text) {
+      if ("Notification" in window && Notification.permission === "granted") {
+        new Notification(`${user} dice:`, {
+          body: text,
+          icon: "https://cdn-icons-png.flaticon.com/512/134/134914.png"
+        });
+      }
+    }
+
+    function loadMessages() {
+      fetch(firebaseUrl)
+        .then((res) => res.json())
+        .then((data) => {
+          if (!data) return;
+
+          const chat = document.getElementById("chat");
+          const messages = Object.values(data || {}).sort(
+            (a, b) => b.timestamp - a.timestamp
+          );
+
+          let newestTimestamp = lastTimestampShown;
+          const fragment = document.createDocumentFragment();
+
+          for (const msg of messages) {
+            if (!displayedTimestamps.has(msg.timestamp)) {
+              const date = new Date(msg.timestamp).toLocaleString();
+
+              const msgDiv = document.createElement("div");
+              msgDiv.className = "msg";
+              msgDiv.innerHTML = `
+                <div class="text"><strong>${msg.user}:</strong> ${enlazarTexto(msg.text)}</div>
+                <div class="meta">${date}</div>
+              `;
+
+              fragment.appendChild(msgDiv);
+
+              if (!isFirstLoad && msg.timestamp !== lastOwnTimestamp) {
+                showToast(`${msg.user} dice: ${msg.text}`);
+                playSound();
+                showNotification(msg.user, msg.text);
+              }
+
+              displayedTimestamps.add(msg.timestamp);
+
+              if (msg.timestamp > newestTimestamp) {
+                newestTimestamp = msg.timestamp;
+              }
+            }
+          }
+
+          if (fragment.childNodes.length > 0) {
+            chat.prepend(fragment);
+          }
+
+          if (newestTimestamp > lastTimestampShown) {
+            lastTimestampShown = newestTimestamp;
+          }
+
+          isFirstLoad = false;
+        });
+    }
+
+    function showToast(message) {
+      const container = document.getElementById("toast-container");
+      const toast = document.createElement("div");
+      toast.className = "toast";
+      toast.textContent = message;
+
+      container.appendChild(toast);
+
+      window.getComputedStyle(toast).opacity;
+      toast.classList.add("show");
+
+      setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => {
+          toast.remove();
+        }, 500);
+      }, 3000);
+    }
+
+    function playSound() {
+      const beep = document.getElementById("beep");
+      if (beep) {
+        beep.currentTime = 0;
+        beep.play().catch(() => {});
+      }
+    }
+
+    function enlazarTexto(texto) {
+      const urlRegex = /((https?:\/\/|www\.)[^\s]+)/g;
+      return texto.replace(urlRegex, function(url) {
+        const href = url.startsWith("http") ? url : "https://" + url;
+        return `<a href="${href}" target="_blank" rel="noopener noreferrer">${url}</a>`;
+      });
+    }
+  </script>
+
+</body>
+</html>
